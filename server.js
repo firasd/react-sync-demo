@@ -16,17 +16,27 @@ var express = require('express');
 var bodyParser = require('body-parser');
 var app = express();
 
+var http = require('http');
+var Primus = require('primus');
+var PrimusResponder = require('primus-responder');
+
+var Promise = require('bluebird');
 var React = require('react');
 var ReactDOMServer = require('react-dom/server');
-
 require('babel-register')({
   presets: [ 'react' ]
 });
+
+var readFile = Promise.promisify(fs.readFile);
+var writeFile = Promise.promisify(fs.writeFile);
+
+var compression = require('compression');
 
 var COMMENTS_FILE = path.join(__dirname, 'comments.json');
 
 app.set('port', (process.env.PORT || 3000));
 
+app.use(compression());
 app.use('/', express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: true}));
@@ -43,46 +53,32 @@ app.use(function(req, res, next) {
 });
 
 app.get('/api/comments', function(req, res) {
-  fs.readFile(COMMENTS_FILE, function(err, data) {
-    if (err) {
-      console.error(err);
-      process.exit(1);
-    }
-    res.json(JSON.parse(data));
+  get_comments().
+  then(function(comments) {
+    if(!comments) { return; }
+    res.json(comments);
+  }).catch(function(err) {
+    console.log("Error", err);
   });
 });
 
 app.post('/api/comments', function(req, res) {
-  fs.readFile(COMMENTS_FILE, function(err, data) {
-    if (err) {
-      console.error(err);
-      process.exit(1);
-    }
-    var comments = JSON.parse(data);
-    // NOTE: In a real implementation, we would likely rely on a database or
-    // some other approach (e.g. UUIDs) to ensure a globally unique id. We'll
-    // treat Date.now() as unique-enough for our purposes.
-    if(req.body.author.trim() && req.body.text.trim()) {
-      var newComment = {
-        id: Date.now(),
-        author: req.body.author,
-        text: req.body.text,
-      };
-      comments.push(newComment);
-    }
-    fs.writeFile(COMMENTS_FILE, JSON.stringify(comments, null, 4), function(err) {
-      if (err) {
-        console.error(err);
-        process.exit(1);
-      }
-      switch (req.accepts('html', 'json')) {
-        case 'json':
-          res.json(comments);
-          break;
-        default:
-          res.redirect('/')
-      }
-    });
+  var comment = {author: req.body.author, text: req.body.text}
+  add_comments([comment]).then(function(comments) {
+    res.redirect('/');
+    sync_comments();
+  }).catch(function(err) {
+    console.log("Error", err);
+  });
+});
+
+app.post('/api/comments/delete/:commentID', function(req, res) {
+  delete_comment(req.params.commentID)
+  .then(function(comments) {
+    res.redirect('/');
+    sync_comments();
+  }).catch(function(err) {
+    console.log("Error", err);
   });
 });
 
@@ -104,7 +100,6 @@ app.get(['/', '/another-page'], function(req, res) {
     var initialState = {
       data: comments,
       url: "/api/comments",
-      pollInterval: 2000
     }
 
     store = store.configureStore(initialState);
@@ -128,6 +123,143 @@ app.get(['/', '/another-page'], function(req, res) {
   });
 });
 
-app.listen(app.get('port'), function() {
+
+get_comments = function() {
+  return readFile(COMMENTS_FILE)
+  .then(function(data) {
+    comments = JSON.parse(data);
+    return comments;
+  }).catch(function(err) {
+    console.log("Error reading file", err);
+  });
+}
+
+add_comments = function(new_comments) {
+  return get_comments().then(function(comments) {
+    var add_comments = [];
+    new_comments.forEach(function(comment, i) {
+      if(!(comment.author.trim() && comment.text.trim())) {
+        return;
+      }
+      var newComment = {
+        id: Date.now()+i,
+        author: comment.author,
+        text: comment.text
+      }
+      add_comments.push(newComment);
+    });
+    if(add_comments.length) {
+      comments = comments.concat(add_comments);
+      return writeFile(COMMENTS_FILE, JSON.stringify(comments, null, 4));
+    }
+  }).then(function() {
+    return get_comments();
+  }).catch(function(err) {
+    console.log("Error", err)
+  });
+};
+
+delete_comment = function(commentID) {
+  return get_comments().
+  then(function(comments) {
+    for(i = 0; i < comments.length; i++) {
+      if(comments[i].id == commentID) {
+        comments.splice(i, 1);
+      }
+    }
+    return writeFile(COMMENTS_FILE, JSON.stringify(comments, null, 4));
+  }).then(function() {
+    return get_comments();
+  }).catch(function(err) {
+    console.log("Error", err)
+  });
+}
+
+var server = http.createServer(app);
+var primus = new Primus(server, {transformer: 'engine.io', parser: 'JSON', compression: true});
+primus.use('responder', PrimusResponder);
+primus.save(path.join(__dirname, 'public', 'scripts', 'primus.js'));
+
+sync_comments = function(opts) {
+  if(!primus) { return; }
+  var opts = typeof opts !== "undefined" ? opts : {}
+  get_comments().then(function(comments) {
+    if(!comments) { return; }
+    if(opts.skip_id) {
+      primus.forEach(function (spark, id, connections) {
+        if(id == opts.skip_id) { return; }
+        spark.write({type: 'set_comments', data: comments, mode: 'broadcast'})
+      });
+    } else {
+      primus.write({type: 'set_comments', data: comments, mode: 'broadcast'});
+    }
+  }).catch(function(err) {
+    console.log("Error", err);
+  });
+}
+
+sync_devices = function() {
+  if(!primus) { return; }
+  var devices = [];
+  primus.forEach(function(spark, id, connections) {
+    devices.push(spark.address.ip+' ('+spark.headers['user-agent']+')');
+  });
+  primus.write({type: 'set_devices', devices: devices, mode: 'broadcast'})
+};
+
+primus.on('connection', function (spark) {
+
+  spark.on('request', function(data, done) {
+    if(data.type == 'add_comment') {
+      add_comments([data.comment]).then(function(comments) {
+        done({type: 'set_comments', data: comments});
+        sync_comments({skip_id: spark.id});
+      });
+    }
+  });
+
+  spark.on('request', function(data, done) {
+    if(data.type == 'delete_comment') {
+        delete_comment(data.commentID).then(function(comments) {
+          done({type: 'set_comments', data: comments});
+          sync_comments({skip_id: spark.id});
+        });
+    }
+  });
+
+  spark.on('request', function(data, done) {
+    if(data.netStatus && data.netStatus == 'online') {
+      if(data.offlinedata && data.offlinedata.length) {
+        add_comments(data.offlinedata).then(function(comments) {
+          done({type: 'set_comments', data: comments});
+          sync_comments({skip_id: spark.id});
+        });
+      } else {
+		get_comments().then(function(comments) {
+		  done({type: 'set_comments', data: comments});
+		})
+	  }
+      sync_devices();
+    }
+  });
+
+  spark.on('data', function (data) {
+    var update_id = spark.id
+    if(data.type) {
+      primus.forEach(function (spark, id, connections) {
+        if(id == update_id) { return; }
+        data.mode = 'broadcast';
+        spark.write(data)
+      });
+    }
+  });
+
+});
+
+primus.on('disconnection', function (spark) {
+  sync_devices();
+});
+
+server.listen(app.get('port'), function() {
   console.log('Server started: http://localhost:' + app.get('port') + '/');
 });

@@ -2,7 +2,7 @@ var webpack = require("webpack");
 
 module.exports = {
   entry: {
-	  app: './public/client.js',
+    app: './public/client.js',
   },
   output: {
     path: './public/scripts/',
@@ -22,4 +22,14 @@ module.exports = {
       },
     ]
   },
+  plugins: [
+	new webpack.DefinePlugin({
+	  'process.env.NODE_ENV': '"production"'
+	}),
+	new webpack.optimize.UglifyJsPlugin({
+	  compress: {
+	    warnings: false
+	  }
+	})
+  ]
 };

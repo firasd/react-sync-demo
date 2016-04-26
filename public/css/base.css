@@ -60,3 +60,97 @@ p, ul {
 ul {
   padding-left: 30px;
 }
+
+h1 {
+  font-size: 1.5em;
+}
+
+h2 {
+  margin: 0;
+}
+
+.net-status {
+  position: fixed;
+  top: 0;
+  right: 0.1em;
+  padding: 1em;
+  font-size: 14px;
+  text-align: center;
+  background: #fcf8e3;
+  display: block;
+  border-radius: 0 0 10px 10px;
+  z-index: 1;
+}
+
+.net-status-indicator {
+  color: green;
+}
+
+.net-status.offline .net-status-indicator {
+  color: red;
+}
+
+.commentBox {
+  max-width: 600px;
+}
+
+.commentBox p {
+  margin: 5px 0;
+}
+
+.comment {
+  position: relative;
+  border: 1px solid #fff;
+  padding: 0.5em;
+}
+
+.comment.offline {
+  background: #f5f5f5;
+}
+.comment.adding {
+  color: #666;
+}
+.comment.deleting {
+  color: #ccc;
+}
+
+h2.commentAuthor {
+  font-size: 1.5em;
+}
+
+.comment .status {
+  position: absolute;
+  top: 1.5em;
+  right:5.5em;
+  font-size: 0.9em;
+  color: #999;
+}
+
+.comment .spinner {
+  margin-left: 0.3em;
+  height: 0.7em;
+}
+
+form.delete, button.delete {
+  position: absolute;
+  top: 1.7em;
+  right: 0.5em;
+  font-size: 0.8em;
+}
+
+.commentForm {
+  margin-top: 1em;
+}
+
+.commentForm input {
+  padding: 0.5em; display: block;
+  margin-bottom: 0.2em;
+}
+
+.commentForm input[type=text]:focus {
+  background: #fcf8e3;
+}
+
+.commentForm input[type=submit] {
+  margin-top: 1em;
+}
