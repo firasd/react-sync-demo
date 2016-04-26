@@ -4,6 +4,7 @@
 
 This is a modified version of the React comment box example from [the React tutorial](http://facebook.github.io/react/docs/tutorial.html). The example app has been modified to demonstrate syncing updates and offline activity across devices.
 
+![Demo GIF](http://i.imgur.com/4AvuS2N.gif)
 
 ## To use
 

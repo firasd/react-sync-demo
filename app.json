@@ -1,5 +1,7 @@
 {
   "name": "React Sync Demo",
+  "description": "Code from the React tutorial, modified to demonstrate syncing updates and offline activity across devices",
+  "keywords": [ "react", "reactjs", "redux", "react router", "server side rendering", "universal", "isomorphic", "websockets", "offline" ],
   "repository": "https://github.com/firasd/react-sync-demo",
   "logo": "https://facebook.github.io/react/img/logo.svg",
   "website": "https://github.com/firasd/react-sync-demo",
