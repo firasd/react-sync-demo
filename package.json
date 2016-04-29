@@ -1,5 +1,5 @@
 {
-  "name": "react-server-tutorial",
+  "name": "react-sync-demo",
   "version": "0.0.0",
   "description": "Code from the React tutorial, modified to demonstrate syncing updates and offline activity across devices.",
   "main": "server.js",
