@@ -24,7 +24,7 @@ var Index = React.createClass({
 			<body>
 				<div id="content">
 					{netStatusLabel}
-					<em>React Sync Demo</em>:<br /> <em><a href="https://medium.com/@firasd/quick-start-tutorial-universal-react-with-server-side-rendering-76fe5363d6e" target="_blank">Article</a> &middot; <a href="https://github.com/firasd/react-sync-demo/" target="_blank">Github</a></em>
+					<em>React Sync Demo</em>:<br /> <em><a href="https://medium.com/@firasd/interface-from-data-using-react-to-sync-updates-and-offline-activity-across-devices-f672b213701c" target="_blank">Article</a> &middot; <a href="https://github.com/firasd/react-sync-demo/" target="_blank">Github</a></em>
 					<ul>
 						<li><Link to="/" activeStyle={{fontWeight: 'bold'}} onlyActiveOnIndex>Comments</Link></li>
 						<li><Link to="/another-page" activeStyle={{fontWeight: 'bold'}}>Another Page</Link></li>
