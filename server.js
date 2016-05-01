@@ -90,12 +90,7 @@ app.get(['/', '/another-page'], function(req, res) {
   var routes = require('./public/routes.js').routes
   var store = require('./public/redux-store');
 
-  fs.readFile(COMMENTS_FILE, function(err, data) {
-    if (err) {
-      console.error(err);
-      process.exit(1);
-    }
-    var comments = JSON.parse(data);
+  get_comments().then(function(comments) {
 
     var initialState = {
       data: comments,
@@ -120,6 +115,8 @@ app.get(['/', '/another-page'], function(req, res) {
       }
     });
 
+  }).catch(function(err) {
+    console.log("Error", err)
   });
 });
 
@@ -127,7 +124,7 @@ app.get(['/', '/another-page'], function(req, res) {
 get_comments = function() {
   return readFile(COMMENTS_FILE)
   .then(function(data) {
-    comments = JSON.parse(data);
+    var comments = JSON.parse(data);
     return comments;
   }).catch(function(err) {
     console.log("Error reading file", err);
